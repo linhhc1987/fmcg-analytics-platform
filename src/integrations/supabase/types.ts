@@ -112,7 +112,28 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      vw_brand_contribution_ranking: {
+        Row: {
+          brand_name: string | null
+          brand_rank: number | null
+          category: string | null
+          contribution_pct: number | null
+          period: string | null
+          revenue: number | null
+        }
+        Relationships: []
+      }
+      vw_sales_performance: {
+        Row: {
+          active_outlets: number | null
+          mom_growth_pct: number | null
+          period: string | null
+          prev_revenue: number | null
+          total_orders: number | null
+          total_revenue: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       fn_root_cause_explorer: {
