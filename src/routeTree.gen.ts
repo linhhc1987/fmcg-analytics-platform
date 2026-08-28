@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DataImportRouteImport } from './routes/data-import'
 import { Route as RootCauseRouteImport } from './routes/root-cause'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DataImportRoute = DataImportRouteImport.update({
+  id: '/data-import',
+  path: '/data-import',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RootCauseRoute = RootCauseRouteImport.update({
   id: '/root-cause',
   path: '/root-cause',
@@ -32,30 +38,34 @@ const RootCauseRoute = RootCauseRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/data-import': typeof DataImportRoute
   '/root-cause': typeof RootCauseRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/data-import': typeof DataImportRoute
   '/root-cause': typeof RootCauseRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/data-import': typeof DataImportRoute
   '/root-cause': typeof RootCauseRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/root-cause'
+  fullPaths: '/' | '/dashboard' | '/data-import' | '/root-cause'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/root-cause'
-  id: '__root__' | '/' | '/dashboard' | '/root-cause'
+  to: '/' | '/dashboard' | '/data-import' | '/root-cause'
+  id: '__root__' | '/' | '/dashboard' | '/data-import' | '/root-cause'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
+  DataImportRoute: typeof DataImportRoute
   RootCauseRoute: typeof RootCauseRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/data-import': {
+      id: '/data-import'
+      path: '/data-import'
+      fullPath: '/data-import'
+      preLoaderRoute: typeof DataImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/root-cause': {
       id: '/root-cause'
       path: '/root-cause'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
+  DataImportRoute: DataImportRoute,
   RootCauseRoute: RootCauseRoute,
 }
 export const routeTree = rootRouteImport
