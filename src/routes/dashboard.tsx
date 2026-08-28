@@ -1,6 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { TrendingUp, TrendingDown, Store, Package } from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,64 +33,73 @@ export const Route = createFileRoute("/dashboard")({
         property: "og:description",
         content: "Theo dõi doanh số, độ phủ và tăng trưởng toàn hệ thống phân phối theo thời gian thực.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: DashboardPage,
 });
 
-const CURRENT = "2026-07";
-const PREVIOUS = "2026-06";
-
-type Row = {
+type Perf = {
   period: string;
-  revenue: number;
+  total_revenue: number;
   active_outlets: number;
-  orders: number;
-  distributors: { name: string; region: string } | null;
-  brands: { name: string } | null;
+  total_orders: number;
+  mom_growth_pct: number | null;
 };
 
+type Contribution = {
+  period: string;
+  brand_name: string;
+  revenue: number;
+  contribution_pct: number;
+  brand_rank: number;
+};
+
+const PIE_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+];
+
 function DashboardPage() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["dashboard-sales"],
+  const perfQuery = useQuery({
+    queryKey: ["kpi-sales-performance"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("monthly_sales")
-        .select("period, revenue, active_outlets, orders, distributors(name, region), brands(name)")
-        .in("period", [CURRENT, PREVIOUS]);
+        .from("vw_sales_performance")
+        .select("period, total_revenue, active_outlets, total_orders, mom_growth_pct")
+        .order("period", { ascending: true });
       if (error) throw error;
-      return data as unknown as Row[];
+      return (data ?? []) as unknown as Perf[];
     },
   });
 
-  const rows = data ?? [];
-  const cur = rows.filter((r) => r.period === CURRENT);
-  const prev = rows.filter((r) => r.period === PREVIOUS);
-  const sum = (list: Row[], key: "revenue" | "active_outlets" | "orders") =>
-    list.reduce((acc, r) => acc + Number(r[key]), 0);
+  const brandQuery = useQuery({
+    queryKey: ["brand-contribution"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vw_brand_contribution_ranking")
+        .select("period, brand_name, revenue, contribution_pct, brand_rank")
+        .order("brand_rank", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as Contribution[];
+    },
+  });
 
-  const revNow = sum(cur, "revenue");
-  const revPrev = sum(prev, "revenue");
-  const growth = revPrev ? ((revNow - revPrev) / revPrev) * 100 : null;
+  const perf = perfQuery.data ?? [];
+  const latest = perf[perf.length - 1];
+  const latestPeriod = latest?.period;
+  const brands = (brandQuery.data ?? []).filter((b) => b.period === latestPeriod);
 
-  const byRegion = Object.entries(
-    cur.reduce<Record<string, number>>((acc, r) => {
-      const key = r.distributors?.region ?? "Khác";
-      acc[key] = (acc[key] ?? 0) + Number(r.revenue);
-      return acc;
-    }, {}),
-  ).sort((a, b) => b[1] - a[1]);
+  const trend = perf.map((p) => ({
+    period: p.period,
+    revenue: Number(p.total_revenue) / 1_000_000_000,
+  }));
 
-  const byBrand = Object.entries(
-    cur.reduce<Record<string, number>>((acc, r) => {
-      const key = r.brands?.name ?? "Khác";
-      acc[key] = (acc[key] ?? 0) + Number(r.revenue);
-      return acc;
-    }, {}),
-  ).sort((a, b) => b[1] - a[1]);
-
-  const maxRegion = byRegion[0]?.[1] ?? 1;
-  const maxBrand = byBrand[0]?.[1] ?? 1;
+  const isLoading = perfQuery.isLoading || brandQuery.isLoading;
 
   return (
     <div className="space-y-6">
@@ -86,7 +107,7 @@ function DashboardPage() {
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Executive overview</p>
         <h1 className="mt-1 text-3xl font-semibold">Tổng quan kinh doanh</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Kỳ {CURRENT} so với {PREVIOUS} · toàn hệ thống nhà phân phối
+          Kỳ {latestPeriod ?? "—"} · toàn hệ thống nhà phân phối
         </p>
       </header>
 
@@ -99,28 +120,115 @@ function DashboardPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard
-            label="Doanh số kỳ này"
-            value={compactCurrency(revNow)}
-            delta={growth}
+            label="Tổng doanh số"
+            value={compactCurrency(Number(latest?.total_revenue ?? 0))}
+            delta={latest?.mom_growth_pct == null ? null : Number(latest.mom_growth_pct)}
             icon={<TrendingUp className="size-4" />}
           />
-          <KpiCard label="Doanh số kỳ trước" value={compactCurrency(revPrev)} icon={<TrendingDown className="size-4" />} />
           <KpiCard
-            label="Điểm bán hoạt động"
-            value={sum(cur, "active_outlets").toLocaleString("vi-VN")}
+            label="Tăng trưởng MoM"
+            value={percent(latest?.mom_growth_pct == null ? null : Number(latest.mom_growth_pct))}
+            icon={
+              Number(latest?.mom_growth_pct ?? 0) >= 0 ? (
+                <TrendingUp className="size-4" />
+              ) : (
+                <TrendingDown className="size-4" />
+              )
+            }
+          />
+          <KpiCard
+            label="Active outlets"
+            value={Number(latest?.active_outlets ?? 0).toLocaleString("vi-VN")}
             icon={<Store className="size-4" />}
           />
           <KpiCard
             label="Tổng đơn hàng"
-            value={sum(cur, "orders").toLocaleString("vi-VN")}
+            value={Number(latest?.total_orders ?? 0).toLocaleString("vi-VN")}
             icon={<Package className="size-4" />}
           />
         </div>
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <BarPanel title="Doanh số theo vùng" rows={byRegion} max={maxRegion} />
-        <BarPanel title="Doanh số theo thương hiệu" rows={byBrand} max={maxBrand} />
+        <Card className="surface-panel border-border/60">
+          <CardHeader>
+            <CardTitle className="text-base">Xu hướng doanh thu theo tháng</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            {trend.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Chưa có dữ liệu.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trend} margin={{ left: -12, right: 8, top: 8 }}>
+                  <defs>
+                    <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.5} />
+                      <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="period" tickLine={false} axisLine={false} fontSize={12} />
+                  <YAxis tickLine={false} axisLine={false} fontSize={12} width={48} />
+                  <Tooltip
+                    formatter={(v: number) => [`${v.toFixed(1)} tỷ`, "Doanh thu"]}
+                    contentStyle={{
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      color: "var(--card-foreground)",
+                      fontSize: 12,
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    fill="url(#revFill)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="surface-panel border-border/60">
+          <CardHeader>
+            <CardTitle className="text-base">Tỷ trọng đóng góp theo thương hiệu</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            {brands.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Chưa có dữ liệu.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={brands}
+                    dataKey="contribution_pct"
+                    nameKey="brand_name"
+                    innerRadius={55}
+                    outerRadius={90}
+                    paddingAngle={2}
+                  >
+                    {brands.map((b, i) => (
+                      <Cell key={b.brand_name} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                  <Tooltip
+                    formatter={(v: number, n: string) => [`${Number(v).toFixed(1)}%`, n]}
+                    contentStyle={{
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      color: "var(--card-foreground)",
+                      fontSize: 12,
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
@@ -152,33 +260,6 @@ function KpiCard({
             {percent(delta)} so với kỳ trước
           </p>
         )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function BarPanel({ title, rows, max }: { title: string; rows: [string, number][]; max: number }) {
-  return (
-    <Card className="surface-panel border-border/60">
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {rows.length === 0 && <p className="text-sm text-muted-foreground">Chưa có dữ liệu.</p>}
-        {rows.map(([name, value]) => (
-          <div key={name} className="space-y-1">
-            <div className="flex items-center justify-between text-sm">
-              <span>{name}</span>
-              <span className="text-muted-foreground">{compactCurrency(value)}</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${Math.max(4, (value / max) * 100)}%` }}
-              />
-            </div>
-          </div>
-        ))}
       </CardContent>
     </Card>
   );
