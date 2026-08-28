@@ -57,11 +57,11 @@ type Contribution = {
 };
 
 const PIE_COLORS = [
-  "hsl(var(--chart-1, 210 90% 60%))",
-  "hsl(var(--chart-2, 190 80% 50%))",
-  "hsl(var(--chart-3, 260 70% 65%))",
-  "hsl(var(--chart-4, 150 60% 50%))",
-  "hsl(var(--chart-5, 35 90% 60%))",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
 ];
 
 function DashboardPage() {
@@ -162,8 +162,8 @@ function DashboardPage() {
                 <AreaChart data={trend} margin={{ left: -12, right: 8, top: 8 }}>
                   <defs>
                     <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.5} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.5} />
+                      <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis dataKey="period" tickLine={false} axisLine={false} fontSize={12} />
@@ -171,16 +171,17 @@ function DashboardPage() {
                   <Tooltip
                     formatter={(v: number) => [`${v.toFixed(1)} tỷ`, "Doanh thu"]}
                     contentStyle={{
-                      background: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
                       borderRadius: 12,
+                      color: "var(--card-foreground)",
                       fontSize: 12,
                     }}
                   />
                   <Area
                     type="monotone"
                     dataKey="revenue"
-                    stroke="hsl(var(--primary))"
+                    stroke="var(--primary)"
                     strokeWidth={2}
                     fill="url(#revFill)"
                   />
@@ -216,9 +217,10 @@ function DashboardPage() {
                   <Tooltip
                     formatter={(v: number, n: string) => [`${Number(v).toFixed(1)}%`, n]}
                     contentStyle={{
-                      background: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
                       borderRadius: 12,
+                      color: "var(--card-foreground)",
                       fontSize: 12,
                     }}
                   />
