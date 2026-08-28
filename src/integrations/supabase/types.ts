@@ -14,13 +14,123 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      brands: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      distributors: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          manager: string | null
+          name: string
+          region: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          manager?: string | null
+          name: string
+          region: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          manager?: string | null
+          name?: string
+          region?: string
+        }
+        Relationships: []
+      }
+      monthly_sales: {
+        Row: {
+          active_outlets: number
+          brand_id: string
+          created_at: string
+          distributor_id: string
+          id: string
+          orders: number
+          period: string
+          revenue: number
+        }
+        Insert: {
+          active_outlets?: number
+          brand_id: string
+          created_at?: string
+          distributor_id: string
+          id?: string
+          orders?: number
+          period: string
+          revenue?: number
+        }
+        Update: {
+          active_outlets?: number
+          brand_id?: string
+          created_at?: string
+          distributor_id?: string
+          id?: string
+          orders?: number
+          period?: string
+          revenue?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_sales_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_sales_distributor_id_fkey"
+            columns: ["distributor_id"]
+            isOneToOne: false
+            referencedRelation: "distributors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      fn_root_cause_explorer: {
+        Args: { p_compare_period: string; p_current_period: string }
+        Returns: {
+          brand_name: string
+          curr_revenue: number
+          distributor_code: string
+          distributor_name: string
+          growth_pct: number
+          order_change_pct: number
+          outlet_change_pct: number
+          prev_revenue: number
+          region: string
+          root_cause: string
+          severity: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
